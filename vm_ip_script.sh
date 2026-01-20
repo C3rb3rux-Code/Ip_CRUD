@@ -1,26 +1,23 @@
 #!/bin/bash
 
-# --- FUNCIONES ---
+echo "Configurando Kernel..."
+sudo sysctl -w net.ipv4.ip_forward=1 > /dev/null
 
 listar_redirecciones() {
-    echo -e "\n--- REDIRECCIONES ACTUALES ---"
-    # Mostramos la tabla NAT, cadena PREROUTING, con números de línea
-    sudo iptables -t nat -L PREROUTING -n --line-numbers | grep -E "dpt:|DNAT|num"
-    echo "-------------------------------"
+    echo -e "\n--- REDIRECCIONES EN PROXMOX/DEBIAN ---"
+    sudo iptables -t nat -L PREROUTING -n --line-numbers
+    echo "---------------------------------------"
 }
 
 crear_redireccion() {
-    read -p "Puerto externo (el que se verá desde fuera): " p_ext
-    read -p "IP de la Maquina Virtual (interna): " ip_int
-    read -p "Puerto de la Maquina Virtual: " p_int
+    read -p "Puerto externo: " p_ext
+    read -p "IP de la VM: " ip_int
+    read -p "Puerto de la VM: " p_int
     
-    sudo iptables -t nat -A PREROUTING -p tcp --dport "$p_ext" -j DNAT --to-destination "$ip_int":"$p_int"
+    sudo iptables -t nat -I PREROUTING -p tcp --dport "$p_ext" -j DNAT --to-destination "$ip_int":"$p_int"
+    sudo iptables -t nat -A POSTROUTING -j MASQUERADE
     
-    if [ $? -eq 0 ]; then
-        echo "✅ Redirección creada: Port $p_ext -> $ip_int:$p_int"
-    else
-        echo "❌ Error al crear la redirección."
-    fi
+    echo "✅ Configurado: Host:$p_ext -> VM($ip_int):$p_int"
 }
 
 eliminar_redireccion() {
