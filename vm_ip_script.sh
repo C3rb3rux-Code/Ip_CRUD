@@ -1,13 +1,10 @@
 #!/bin/bash
 
-# Comprobar si somos root
 if [[ $EUID -ne 0 ]]; then
-   echo "❌ Este script debe ejecutarse con sudo o como root"
+   echo "Este script debe ejecutarse con sudo o como root"
    exit 1
 fi
 
-# 1. ACTIVAR REENVÍO DE PAQUETES (Crucial para VMs)
-# Esto permite que el tráfico pase a través del Host Proxmox hacia las VMs
 sysctl -w net.ipv4.ip_forward=1 > /dev/null
 
 menu() {
@@ -23,7 +20,6 @@ menu() {
 
 listar() {
     echo -e "\n--- REGLAS NAT ACTIVAS ---"
-    # Listamos solo las reglas de DNAT que son las de redirección
     iptables -t nat -L PREROUTING -n --line-numbers | grep -E "num|DNAT"
 }
 
@@ -32,13 +28,11 @@ crear() {
     read -p "IP de la VM Destino: " ip_vm
     read -p "Puerto de la VM Destino: " p_vm
     
-    # Aplicar la regla de redirección
     iptables -t nat -A PREROUTING -p tcp --dport "$p_ext" -j DNAT --to-destination "$ip_vm":"$p_vm"
     
-    # Aplicar Masquerade para que la VM sepa responder al tráfico externo
     iptables -t nat -A POSTROUTING -d "$ip_vm" -p tcp --dport "$p_vm" -j MASQUERADE
     
-    echo "✅ Redirección establecida: Host:$p_ext -> VM($ip_vm):$p_vm"
+    echo "Redirección establecida: Host:$p_ext -> VM($ip_vm):$p_vm"
 }
 
 eliminar() {
@@ -46,9 +40,9 @@ eliminar() {
     read -p "Introduce el número de línea a eliminar: " num
     if [[ -n $num ]]; then
         iptables -t nat -D PREROUTING "$num"
-        echo "✅ Regla eliminada."
+        echo "Regla eliminada."
     else
-        echo "❌ Número no válido."
+        echo "Número no válido."
     fi
 }
 
