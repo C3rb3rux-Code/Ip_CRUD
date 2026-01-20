@@ -1,63 +1,65 @@
 #!/bin/bash
 
-echo "Configurando Kernel..."
-sudo sysctl -w net.ipv4.ip_forward=1 > /dev/null
+# Comprobar si somos root
+if [[ $EUID -ne 0 ]]; then
+   echo "❌ Este script debe ejecutarse con sudo o como root"
+   exit 1
+fi
 
-listar_redirecciones() {
-    echo -e "\n--- REDIRECCIONES EN PROXMOX/DEBIAN ---"
-    sudo iptables -t nat -L PREROUTING -n --line-numbers
-    echo "---------------------------------------"
+# 1. ACTIVAR REENVÍO DE PAQUETES (Crucial para VMs)
+# Esto permite que el tráfico pase a través del Host Proxmox hacia las VMs
+sysctl -w net.ipv4.ip_forward=1 > /dev/null
+
+menu() {
+    echo -e "\n======================================"
+    echo "    GESTOR PORT-FORWARDING PROXMOX"
+    echo "======================================"
+    echo "1) Listar Redirecciones"
+    echo "2) Crear Nueva (Port -> VM)"
+    echo "3) Eliminar Redirección"
+    echo "4) Salir"
+    read -p "Seleccione una opción: " opcion
 }
 
-crear_redireccion() {
-    read -p "Puerto externo: " p_ext
-    read -p "IP de la VM: " ip_int
-    read -p "Puerto de la VM: " p_int
-    
-    sudo iptables -t nat -I PREROUTING -p tcp --dport "$p_ext" -j DNAT --to-destination "$ip_int":"$p_int"
-    sudo iptables -t nat -A POSTROUTING -j MASQUERADE
-    
-    echo "✅ Configurado: Host:$p_ext -> VM($ip_int):$p_int"
+listar() {
+    echo -e "\n--- REGLAS NAT ACTIVAS ---"
+    # Listamos solo las reglas de DNAT que son las de redirección
+    iptables -t nat -L PREROUTING -n --line-numbers | grep -E "num|DNAT"
 }
 
-eliminar_redireccion() {
-    listar_redirecciones
-    read -p "Ingrese el número de línea que desea eliminar: " num_linea
-    sudo iptables -t nat -D PREROUTING "$num_linea"
+crear() {
+    read -p "Puerto Externo (del Host Proxmox): " p_ext
+    read -p "IP de la VM Destino: " ip_vm
+    read -p "Puerto de la VM Destino: " p_vm
     
-    if [ $? -eq 0 ]; then
-        echo "✅ Regla eliminada correctamente."
+    # Aplicar la regla de redirección
+    iptables -t nat -A PREROUTING -p tcp --dport "$p_ext" -j DNAT --to-destination "$ip_vm":"$p_vm"
+    
+    # Aplicar Masquerade para que la VM sepa responder al tráfico externo
+    iptables -t nat -A POSTROUTING -d "$ip_vm" -p tcp --dport "$p_vm" -j MASQUERADE
+    
+    echo "✅ Redirección establecida: Host:$p_ext -> VM($ip_vm):$p_vm"
+}
+
+eliminar() {
+    listar
+    read -p "Introduce el número de línea a eliminar: " num
+    if [[ -n $num ]]; then
+        iptables -t nat -D PREROUTING "$num"
+        echo "✅ Regla eliminada."
     else
-        echo "❌ No se pudo eliminar la regla. ¿El número es correcto?"
+        echo "❌ Número no válido."
     fi
 }
 
-editar_redireccion() {
-    echo "Para editar, primero eliminaremos la regla vieja y crearemos una nueva."
-    eliminar_redireccion
-    echo "Ahora, ingresa los nuevos datos:"
-    crear_redireccion
-}
-
-# --- MENÚ PRINCIPAL ---
-
+# Bucle principal
 while true; do
-    echo -e "\n============================"
-    echo "   GESTOR DE REDIRECCIONES  "
-    echo "============================"
-    echo "1. Listar redirecciones"
-    echo "2. Crear nueva redirección"
-    echo "3. Editar una redirección"
-    echo "4. Eliminar una redirección"
-    echo "5. Salir"
-    read -p "Seleccione una opción [1-5]: " opcion
-
+    menu
     case $opcion in
-        1) listar_redirecciones ;;
-        2) crear_redireccion ;;
-        3) editar_redireccion ;;
-        4) eliminar_redireccion ;;
-        5) echo "¡Adiós!"; exit 0 ;;
+        1) listar ;;
+        2) crear ;;
+        3) eliminar ;;
+        4) exit 0 ;;
         *) echo "Opción no válida." ;;
     esac
 done
