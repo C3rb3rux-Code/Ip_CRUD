@@ -124,6 +124,17 @@ guardar_reglas() {
     fi
 }
 
+inventario_maquinas() {
+    echo -e "\n--- INVENTARIO DE MÁQUINAS VIRTUALES ---"
+    lista_vms=$(qm list)
+    echo "$lista_vms"
+    for vm in $lista_vms; do
+        vm_id=$(echo $vm | awk '{print $1}')
+        vm_name=$(echo $vm | awk '{print $2}')
+        echo "VM ID: $vm_id, Nombre: $vm_name"
+    done | columnn -t
+}
+
 # Bucle principal
 while true; do
     menu
