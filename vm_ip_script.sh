@@ -71,13 +71,13 @@ crear() {
     # Aplicar reglas
     if iptables -t nat -A PREROUTING -p "$protocolo" --dport "$p_ext" -j DNAT --to-destination "$ip_vm:$p_vm" 2>/dev/null; then
         if iptables -t nat -A POSTROUTING -d "$ip_vm" -p "$protocolo" --dport "$p_vm" -j MASQUERADE 2>/dev/null; then
-            echo "✓ Redirección establecida: Host:$p_ext ($protocolo) → VM($ip_vm):$p_vm"
+            echo "Redirección establecida: Host:$p_ext ($protocolo) → VM($ip_vm):$p_vm"
         else
-            echo "✗ Error al crear regla POSTROUTING"
+            echo "Error al crear regla POSTROUTING"
             return 1
         fi
     else
-        echo "✗ Error al crear regla PREROUTING"
+        echo "Error al crear regla PREROUTING"
         return 1
     fi
 }
@@ -105,9 +105,9 @@ eliminar() {
     fi
     
     if iptables -t nat -D PREROUTING "$num" 2>/dev/null; then
-        echo "✓ Regla eliminada correctamente."
+        echo "Regla eliminada correctamente."
     else
-        echo "✗ Error al eliminar la regla. Verifica el número."
+        echo "Error al eliminar la regla. Verifica el número."
         return 1
     fi
 }
@@ -116,11 +116,11 @@ eliminar() {
 guardar_reglas() {
     echo "Guardando reglas en /etc/iptables/rules.v4..."
     if mkdir -p /etc/iptables 2>/dev/null && iptables-save > /etc/iptables/rules.v4 2>/dev/null; then
-        echo "✓ Reglas guardadas correctamente."
+        echo "Reglas guardadas correctamente."
         echo "Para restaurarlas automáticamente, instala iptables-persistent:"
         echo "  apt-get install iptables-persistent"
     else
-        echo "✗ Error al guardar las reglas. Verifica permisos."
+        echo "Error al guardar las reglas. Verifica permisos."
     fi
 }
 
