@@ -143,7 +143,8 @@ while true; do
         2) crear ;;
         3) eliminar ;;
         4) guardar_reglas ;;
-        5) exit 0 ;;
+        5) inventario_maquinas ;;
+        6) exit 0 ;;
         *) echo "Opción no válida." ;;
     esac
 done
