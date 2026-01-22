@@ -37,7 +37,8 @@ menu() {
     echo "2) Crear Nueva (Port -> VM)"
     echo "3) Eliminar Redirección"
     echo "4) Guardar reglas (persistencia)"
-    echo "5) Salir"
+    echo "5) Inventario Máquinas Virtuales"
+    echo "6) Salir"
     read -p "Seleccione una opción: " opcion
 }
 
