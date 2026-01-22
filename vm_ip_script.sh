@@ -53,33 +53,52 @@ listar() {
 }
 
 crear() {
-    read -p "Puerto Externo (del Host Proxmox): " p_ext
-    read -p "IP de la VM Destino: " ip_vm
-    read -p "Puerto de la VM Destino: " p_vm
-    read -p "Protocolo (tcp/udp) [tcp]: " protocolo
-    protocolo=${protocolo:-tcp}
+    echo -e "\n--- NUEVA REDIRECCIÓN (AUTODETECCIÓN POR VMID) ---"
     
-    # Validaciones
-    validar_puerto "$p_ext" || return
-    validar_puerto "$p_vm" || return
-    validar_ip "$ip_vm" || return
+    read -p "Introduce el ID de la VM (VMID): " vmid
     
-    if [[ "$protocolo" != "tcp" && "$protocolo" != "udp" ]]; then
-        echo "Error: Protocolo debe ser 'tcp' o 'udp'"
-        return
-    fi
-    
-    # Aplicar reglas
-    if iptables -t nat -A PREROUTING -p "$protocolo" --dport "$p_ext" -j DNAT --to-destination "$ip_vm:$p_vm" 2>/dev/null; then
-        if iptables -t nat -A POSTROUTING -d "$ip_vm" -p "$protocolo" --dport "$p_vm" -j MASQUERADE 2>/dev/null; then
-            echo "Redirección establecida: Host:$p_ext ($protocolo) → VM($ip_vm):$p_vm"
+    if [[ -n "$vmid" ]]; then
+        echo "🔍 Buscando MAC e IP para la VM $vmid..."
+        
+        local mac=$(qm config "$vmid" 2>/dev/null | grep -i "net0" | grep -o -P '([a-fA-F0-9]{2}:){5}[a-fA-F0-9]{2}' | tr '[:upper:]' '[:lower:]')
+        
+        if [[ -n "$mac" ]]; then
+            local ip_sugerida=$(ip neighbor show | grep "$mac" | awk '{print $1}' | head -n 1)
+            
+            if [[ -n "$ip_sugerida" ]]; then
+                echo "💡 IP detectada automáticamente: $ip_sugerida"
+                read -p "Presiona Enter para usarla o escribe la IP manualmente: " ip_input
+                ip_vm=${ip_input:-$ip_sugerida}
+            else
+                echo "⚠️  MAC encontrada ($mac), pero la IP no está en la tabla ARP."
+                echo "💡 Sugerencia: Asegúrate de que la VM esté encendida y haya tenido tráfico."
+                read -p "Introduce la IP de la VM manualmente: " ip_vm
+            fi
         else
-            echo "Error al crear regla POSTROUTING"
-            return 1
+            echo "❌ No se encontró configuración de red para la VM $vmid."
+            read -p "Introduce la IP de la VM manualmente: " ip_vm
         fi
     else
-        echo "Error al crear regla PREROUTING"
-        return 1
+        read -p "Introduce la IP de la VM manualmente: " ip_vm
+    fi
+
+    validar_ip "$ip_vm" || return
+    
+    read -p "Puerto Externo (Host Proxmox): " p_ext
+    validar_puerto "$p_ext" || return
+    
+    read -p "Puerto de la VM Destino: " p_vm
+    validar_puerto "$p_vm" || return
+    
+    read -p "Protocolo (tcp/udp) [tcp]: " protocolo
+    protocolo=${protocolo:-tcp}
+
+    if iptables -t nat -A PREROUTING -p "$protocolo" --dport "$p_ext" -j DNAT --to-destination "$ip_vm:$p_vm"; then
+        iptables -t nat -A POSTROUTING -d "$ip_vm" -p "$protocolo" --dport "$p_vm" -j MASQUERADE
+        echo -e "\n✅ Redirección establecida con éxito:"
+        echo "   [$protocolo] Host:$p_ext ---> VM($vmid - $ip_vm):$p_vm"
+    else
+        echo "❌ Error crítico al aplicar las reglas de iptables."
     fi
 }
 
