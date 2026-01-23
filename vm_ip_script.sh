@@ -58,7 +58,7 @@ crear() {
     read -p "Introduce el ID de la VM (VMID): " vmid
     
     if [[ -n "$vmid" ]]; then
-        echo "🔍 Buscando MAC e IP para la VM $vmid..."
+        echo "Buscando MAC e IP para la VM $vmid..."
         
         local mac=$(qm config "$vmid" 2>/dev/null | grep -i "net0" | grep -o -P '([a-fA-F0-9]{2}:){5}[a-fA-F0-9]{2}' | tr '[:upper:]' '[:lower:]')
         
@@ -66,16 +66,16 @@ crear() {
             local ip_sugerida=$(ip neighbor show | grep "$mac" | awk '{print $1}' | head -n 1)
             
             if [[ -n "$ip_sugerida" ]]; then
-                echo "💡 IP detectada automáticamente: $ip_sugerida"
+                echo "IP detectada automáticamente: $ip_sugerida"
                 read -p "Presiona Enter para usarla o escribe la IP manualmente: " ip_input
                 ip_vm=${ip_input:-$ip_sugerida}
             else
-                echo "⚠️  MAC encontrada ($mac), pero la IP no está en la tabla ARP."
-                echo "💡 Sugerencia: Asegúrate de que la VM esté encendida y haya tenido tráfico."
+                echo "MAC encontrada ($mac), pero la IP no está en la tabla ARP."
+                echo "Sugerencia: Asegúrate de que la VM esté encendida y haya tenido tráfico."
                 read -p "Introduce la IP de la VM manualmente: " ip_vm
             fi
         else
-            echo "❌ No se encontró configuración de red para la VM $vmid."
+            echo "No se encontró configuración de red para la VM $vmid."
             read -p "Introduce la IP de la VM manualmente: " ip_vm
         fi
     else
@@ -95,10 +95,10 @@ crear() {
 
     if iptables -t nat -A PREROUTING -p "$protocolo" --dport "$p_ext" -j DNAT --to-destination "$ip_vm:$p_vm"; then
         iptables -t nat -A POSTROUTING -d "$ip_vm" -p "$protocolo" --dport "$p_vm" -j MASQUERADE
-        echo -e "\n✅ Redirección establecida con éxito:"
+        echo -e "\nRedirección establecida con éxito:"
         echo "   [$protocolo] Host:$p_ext ---> VM($vmid - $ip_vm):$p_vm"
     else
-        echo "❌ Error crítico al aplicar las reglas de iptables."
+        echo "Error crítico al aplicar las reglas de iptables."
     fi
 }
 
