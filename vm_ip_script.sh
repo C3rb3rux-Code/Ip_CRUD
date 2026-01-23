@@ -7,7 +7,6 @@ fi
 
 sysctl -w net.ipv4.ip_forward=1 > /dev/null
 
-# Validar IP
 validar_ip() {
     local ip=$1
     if [[ $ip =~ ^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$ ]]; then
@@ -18,7 +17,6 @@ validar_ip() {
     fi
 }
 
-# Validar puerto
 validar_puerto() {
     local puerto=$1
     if [[ $puerto =~ ^[0-9]+$ ]] && [ "$puerto" -ge 1 ] && [ "$puerto" -le 65535 ]; then
@@ -132,7 +130,6 @@ eliminar() {
     fi
 }
 
-# Guardar reglas (persistencia)
 guardar_reglas() {
     echo "Guardando reglas en /etc/iptables/rules.v4..."
     if mkdir -p /etc/iptables 2>/dev/null && iptables-save > /etc/iptables/rules.v4 2>/dev/null; then
@@ -155,7 +152,6 @@ inventario_maquinas() {
     done | columnn -t
 }
 
-# Bucle principal
 while true; do
     menu
     case $opcion in
